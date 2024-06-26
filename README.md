@@ -1,1 +1,7 @@
-# galaxyexamen-final-nunezdelprado-diego
+
+
+```
+curl http://localhost:8080/customers
+```
+
+
