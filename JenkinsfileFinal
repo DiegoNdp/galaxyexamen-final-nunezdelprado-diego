@@ -5,10 +5,6 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-
-                git url: 'https://github.com/DiegoNdp/galaxyexamen-final-nunezdelprado-diego.git',
-                    branch: 'main'
-
                 sh 'mvn package'
             }
             post{
@@ -69,7 +65,7 @@ pipeline {
                 steps {
                     script {
                         sh 'docker login -u ${DOCKER_CREDS_USR} -p ${DOCKER_CREDS_PSW}'
-                        sh 'docker rm galaxyLab -f'
+                        sh 'docker rm diegoNdp -f'
                         sh 'docker run -d -p 8080:8080 --name diegoNdp ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
                         //sh 'docker run -d -p 8080:8080 ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
                         sh 'docker logout'
