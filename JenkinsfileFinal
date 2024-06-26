@@ -1,7 +1,8 @@
 pipeline {
-    agent any {
-        docker { image 'maven:3.6.3-openjdk-11-slim' }
-            }
+    agent any
+    environment {
+        DOCKER_CREDS = credentials('docker-credentials')
+        }
     stages {
         stage('Build') {
             steps {
