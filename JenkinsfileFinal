@@ -1,22 +1,23 @@
 pipeline {
     agent {
         docker { image 'maven:3.6.3-openjdk-11-slim' }
-    }
+            }
     stages {
         stage('Build') {
             steps {
                 sh 'mvn package'
             }
-            post {
+            post{
                 success {
                     archiveArtifacts artifacts: 'target/*.jar', fingerprint: true, onlyIfSuccessful: true
+//                    mail bcc: '', body: 'El pipeline fue exitoso', cc: '', from: '', replyTo: '', subject: 'Pipeline exitoso', to: 'josealdotrucios@gmail.com'
                 }
             }
         }
         stage('SonarQube analysis') {
             steps {
-                script {
-                    def scannerHome = tool 'scanner-default'
+                script{
+                    def scannerHome = tool 'scanner-default';
                     withSonarQubeEnv('sonar-server') {
                         sh "${scannerHome}/bin/sonar-scanner \
                             -Dsonar.projectKey=labmaven01 \
@@ -33,70 +34,50 @@ pipeline {
                             -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco.xml \
                             -Dsonar.exclusions=**/*IT.java,**/*TEST.java,**/*Test.java,**/src/it**,**/src/test**,**/gradle/wrapper** \
                             -Dsonar.java.libraries=target/*.jar"
+                        }
                     }
                 }
             }
-        }
-        stage('Setup Docker') {
-            steps {
-                script {
-                    sh 'apt-get update && apt-get install -y \
-                        apt-transport-https \
-                        ca-certificates \
-                        curl \
-                        gnupg-agent \
-                        software-properties-common'
-
-                    sh 'curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -'
-                    sh 'add-apt-repository \
-                        "deb [arch=amd64] https://download.docker.com/linux/debian \
-                        $(lsb_release -cs) \
-                        stable"'
-
-                    sh 'apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io'
-                    sh 'curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose'
-                    sh 'chmod +x /usr/local/bin/docker-compose'
-                    sh 'docker-compose --version' // Verificar instalación
+            stage('Build Image') {
+                steps {
+                    copyArtifacts filter: 'target/*.jar',
+                                    fingerprintArtifacts: true,
+                                    projectName: '${JOB_NAME}',
+                                    flatten: true,
+                                    selector: specific('${BUILD_NUMBER}'),
+                                    target: 'target/'
+                 
+                    sh 'docker-compose build'
                 }
             }
-        }
-        stage('Build Image') {
-            steps {
-                copyArtifacts filter: 'target/*.jar',
-                              fingerprintArtifacts: true,
-                              projectName: '${JOB_NAME}',
-                              flatten: true,
-                              selector: specific('${BUILD_NUMBER}'),
-                              target: 'target/'
-                sh 'docker-compose build'
-            }
-        }
-        stage('Publish Image') {
-            steps {
-                script {
-                    sh 'docker login -u ${DOCKER_CREDS_USR} -p ${DOCKER_CREDS_PSW}'
-                    sh 'docker tag msmicroservice ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
-                    sh 'docker push ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
-                    sh 'docker logout'
+            stage('Publish Image') {
+                steps {
+                    script {
+                        sh 'docker login -u ${DOCKER_CREDS_USR} -p ${DOCKER_CREDS_PSW}'
+                        sh 'docker tag msmicroservice ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
+                        sh 'docker push ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
+                        sh 'docker logout'
+                    }
                 }
             }
-        }
-        stage('Run Container') {
-            steps {
-                script {
-                    sh 'docker login -u ${DOCKER_CREDS_USR} -p ${DOCKER_CREDS_PSW}'
-                    sh 'docker rm diegoNdp -f'
-                    sh 'docker run -d -p 8080:8080 --name diegoNdp ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
-                    sh 'docker logout'
+            stage('Run Container') {
+                steps {
+                    script {
+                        sh 'docker login -u ${DOCKER_CREDS_USR} -p ${DOCKER_CREDS_PSW}'
+                        sh 'docker rm diegoNdp -f'
+                        sh 'docker run -d -p 8080:8080 --name diegoNdp ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
+                        //sh 'docker run -d -p 8080:8080 ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
+                        sh 'docker logout'
+                    }
                 }
             }
-        }
-        stage('Test Run Container') {
-            steps {
-                script {
-                    sh 'docker ps'
-                }
+            stage('Test Run Container') {
+                    steps {
+                        script {
+                            sh 'docker ps'
+                        //    sh 'curl http://192.168.1.17:8080/customers'
+                        }
+                    }
             }
         }
-    }
 }
