@@ -9,10 +9,9 @@ pipeline {
                     docker { image 'maven:3.6.3-openjdk-11-slim' }
                 }
                     steps {
-				git url: 'https://github.com/aldo2510/galaxy-jenkins-lab-maven.git',
-	                        branch: 'main'
-
-                sh 'mvn -B verify'             }
+                        sh 'mvn -B verify'
+                        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true, onlyIfSuccessful: true
+                    }
             }
             stage('SonarQube') {
                 steps {
