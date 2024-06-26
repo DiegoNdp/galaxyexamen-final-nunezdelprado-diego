@@ -9,19 +9,34 @@ pipeline {
                     docker { image 'maven:3.6.3-openjdk-11-slim' }
                 }
                     steps {
-                        sh 'mvn -B verify'
-                        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true, onlyIfSuccessful: true
-                    }
-            }
+				git url: 'https://github.com/DiegoNdp/galaxyexamen-final-nunezdelprado-diego.git',
+	                        branch: 'main'
 
+                sh 'mvn -B verify'             }
+            }
+            stage('SonarQube') {
+                steps {
+                    script{
+                        def scannerHome = tool 'scanner-default'
+                        withSonarQubeEnv('sonar-server') {
+                            sh "${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=labgradle01 \
+                            -Dsonar.projectName=labgradle01 \
+                            -Dsonar.sources=src/main/kotlin \
+                            -Dsonar.java.binaries=build/classes \
+                            -Dsonar.tests=src/test/kotlin"
+                        }
+                    }
+                }
+            }
             stage('Build Image') {
                 steps {
-                    copyArtifacts filter: 'target/*.jar',
-                                fingerprintArtifacts: true,
-                                projectName: '${JOB_NAME}',
-                                flatten: true,
-                                selector: specific('${BUILD_NUMBER}'),
-                                target: 'target';
+                    copyArtifacts filter: 'build/libs/labgradle-*-SNAPSHOT.jar',
+                                    fingerprintArtifacts: true,
+                                    projectName: '${JOB_NAME}',
+                                    flatten: true,
+                                    selector: specific('${BUILD_NUMBER}'),
+                                    target: 'build/libs/'
                     sh 'docker --version'
                     sh 'docker-compose --version'
                     sh 'docker-compose build'
@@ -36,6 +51,25 @@ pipeline {
                         sh 'docker logout'
                     }
                 }
+            }
+            stage('Run Container') {
+                steps {
+                    script {
+                        sh 'docker login -u ${DOCKER_CREDS_USR} -p ${DOCKER_CREDS_PSW}'
+                        sh 'docker rm galaxyLab -f'
+                        sh 'docker run -d -p 8080:8080 --name galaxyLab ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
+                        //sh 'docker run -d -p 8080:8080 ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
+                        sh 'docker logout'
+                    }
+                }
+            }
+            stage('Test Run Container') {
+                    steps {
+                        script {
+                            sh 'docker ps'
+                        //    sh 'curl http://192.168.1.17:8080/customers'
+                        }
+                    }
             }
         }
 }
