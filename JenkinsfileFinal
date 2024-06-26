@@ -6,7 +6,7 @@ pipeline {
         stage('Build') {
             steps {
 
-                git url: 'https://github.com/aldo2510/galaxy-jenkins-lab-maven.git',
+                git url: 'https://github.com/DiegoNdp/galaxyexamen-final-nunezdelprado-diego.git',
                     branch: 'main'
 
                 sh 'mvn package'
