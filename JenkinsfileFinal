@@ -3,17 +3,17 @@ pipeline {
     environment {
         DOCKER_CREDS = credentials('docker-credentials')
         }
-    stages {
-        stage('Build') {
-            steps {
-                sh 'mvn package'
-            }
-            post{
-                success {
-                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true, onlyIfSuccessful: true
+        stages {
+            stage('Build') {
+                agent {
+                    docker { image 'maven:3.6.3-openjdk-11-slim' }
                 }
+                    steps {
+                        sh 'mvn -B verify'
+                        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true, onlyIfSuccessful: true
+                    }
             }
-        }
+        
         stage('SonarQube analysis') {
             steps {
                 script{
@@ -41,11 +41,11 @@ pipeline {
             stage('Build Image') {
                 steps {
                     copyArtifacts filter: 'target/*.jar',
-                                    fingerprintArtifacts: true,
-                                    projectName: '${JOB_NAME}',
-                                    flatten: true,
-                                    selector: specific('${BUILD_NUMBER}'),
-                                    target: 'target/'
+                                fingerprintArtifacts: true,
+                                projectName: '${JOB_NAME}',
+                                flatten: true,
+                                selector: specific('${BUILD_NUMBER}'),
+                                target: 'target';
                     sh 'docker --version'
                     sh 'docker-compose --version'
                     sh 'docker-compose build'
