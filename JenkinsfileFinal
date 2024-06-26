@@ -7,7 +7,7 @@ pipeline {
             steps {
                 sh 'mvn package'
             }
-            post{
+            post {
                 success {
                     archiveArtifacts artifacts: 'target/*.jar', fingerprint: true, onlyIfSuccessful: true
                 }
@@ -37,23 +37,38 @@ pipeline {
                 }
             }
         }
-        stage('Build Image') {
+        stage('Setup Docker') {
             steps {
                 script {
-                    sh 'apt-get update && apt-get install -y curl'  // Instalar curl si no está disponible
+                    sh 'apt-get update && apt-get install -y \
+                        apt-transport-https \
+                        ca-certificates \
+                        curl \
+                        gnupg-agent \
+                        software-properties-common'
+
+                    sh 'curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -'
+                    sh 'add-apt-repository \
+                        "deb [arch=amd64] https://download.docker.com/linux/debian \
+                        $(lsb_release -cs) \
+                        stable"'
+
+                    sh 'apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io'
                     sh 'curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose'
                     sh 'chmod +x /usr/local/bin/docker-compose'
                     sh 'docker-compose --version' // Verificar instalación
-
-                    copyArtifacts filter: 'target/*.jar',
-                                  fingerprintArtifacts: true,
-                                  projectName: '${JOB_NAME}',
-                                  flatten: true,
-                                  selector: specific('${BUILD_NUMBER}'),
-                                  target: 'target/'
-                 
-                    sh 'docker-compose build'
                 }
+            }
+        }
+        stage('Build Image') {
+            steps {
+                copyArtifacts filter: 'target/*.jar',
+                              fingerprintArtifacts: true,
+                              projectName: '${JOB_NAME}',
+                              flatten: true,
+                              selector: specific('${BUILD_NUMBER}'),
+                              target: 'target/'
+                sh 'docker-compose build'
             }
         }
         stage('Publish Image') {
