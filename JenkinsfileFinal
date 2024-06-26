@@ -10,7 +10,6 @@ pipeline {
             post{
                 success {
                     archiveArtifacts artifacts: 'target/*.jar', fingerprint: true, onlyIfSuccessful: true
-//                    mail bcc: '', body: 'El pipeline fue exitoso', cc: '', from: '', replyTo: '', subject: 'Pipeline exitoso', to: 'josealdotrucios@gmail.com'
                 }
             }
         }
@@ -46,7 +45,8 @@ pipeline {
                                     flatten: true,
                                     selector: specific('${BUILD_NUMBER}'),
                                     target: 'target/'
-                 
+                    sh 'docker --version'
+                    sh 'docker-compose --version'
                     sh 'docker-compose build'
                 }
             }
@@ -64,8 +64,8 @@ pipeline {
                 steps {
                     script {
                         sh 'docker login -u ${DOCKER_CREDS_USR} -p ${DOCKER_CREDS_PSW}'
-                        sh 'docker rm diegoNdp -f'
-                        sh 'docker run -d -p 8080:8080 --name diegoNdp ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
+                        sh 'docker rm galaxyLab -f'
+                        sh 'docker run -d -p 8080:8080 --name galaxyLab ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
                         //sh 'docker run -d -p 8080:8080 ${DOCKER_CREDS_USR}/msmicroservice:$BUILD_NUMBER'
                         sh 'docker logout'
                     }
